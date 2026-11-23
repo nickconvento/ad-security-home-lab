@@ -60,7 +60,7 @@ CLIENT01 reported that the domain wasn't available. `nslookup corp.local` return
 
 ### Failed-logon script
 
-<!-- TODO add: screenshots/04-logging-script/audit-policy.png, script-output.png, event-4740-detail.png -->
+![Script output](screenshots/script-output.png)
 
 ## Problems I solved
 
