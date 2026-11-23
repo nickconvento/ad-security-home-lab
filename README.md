@@ -4,7 +4,6 @@ A small Windows domain built in VirtualBox to practice Active Directory administ
 
 **Skills practiced:** Active Directory and DNS, Group Policy, network troubleshooting, Windows event auditing, PowerShell.
 
-Full write-up with every step and screenshot: [docs/AD_Security_Project_Documentation.pdf](docs/AD_Security_Project_Documentation.pdf)
 
 ## Lab environment
 
