@@ -99,12 +99,52 @@ CLIENT01 reported that the domain wasn't available. `nslookup corp.local` return
 - A domain controller only records what it is told to audit, so detection depends on turning on failure auditing first.
 - A brute-force attempt looks like repeated 4771 events for one account from one source, ending in a 4740 lockout.
 
-## Next steps
+## Adding Splunk Monitoring
 
-Schedule the script to run daily and flag any account with several failures in a short window.
+Splunk monitoring
 
-## Notes
+The script reads the log on demand. Splunk collects the same events continuously so they can be searched, charted, and alerted on.
+
+Data flow: DC01 (Splunk Universal Forwarder, Security log) sends to Splunk Enterprise on the host laptop (port 9997), into the ad_lab index. The forwarder input on DC01:
+
+[WinEventLog://Security]
+index = ad_lab
+disabled = 0
+
+Dashboard: AD Authentication Monitoring
+
+Repeated failed logons by source
+Account lockouts (locked user and caller computer)
+Failed logons over time
+Account changes (create, enable, password reset, disable, delete)
+
+Alerts
+
+Repeated Failed Logons: fires when one source produces 5 or more Kerberos pre-authentication failures (Event 4771) in 15 minutes. Runs every 5 minutes.
+Account Lockout: fires on any Event 4740.
+
+All searches and alert settings are in splunk/detections.md.
+
+Testing: failed logins for CORP\jsmith from CLIENT01 until the lockout policy locked the account, confirming the 4771 failures and 4740 lockout reached Splunk and the dashboard. A test account was created, reset, disabled, and deleted to populate the account changes panel.
+
+Detection mapping
+
+Detection	Event	MITRE ATT&CK	NIST 800-53
+Repeated failed logons	4771	T1110 Brute Force	AC-7 Unsuccessful Logon Attempts
+Account lockout	4740	T1110 Brute Force	AC-7 Unsuccessful Logon Attempts
+Account changes	4720, 4722, 4724, 4725, 4726	T1136 Create Account, T1098 Account Manipulation	AC-2 Account Management
+Takeaways
+Account lockout policy only takes effect at the domain level, and GPO link order decides which policy wins.
+Lockouts are enforced by the domain controller, so failed attempts that never reach it do not count.
+A domain controller only records what it is told to audit, so detection depends on turning on failure auditing first.
+A brute-force attempt looks like repeated 4771 events for one account from one source, ending in a 4740 lockout.
+A SIEM is only as good as its inputs: mismatched clocks and a disabled audit subcategory both hid events that were really happening.
+Next steps
+
+Move the User Account Management audit setting into Group Policy so it persists after a reset, and add an alert for account changes.
+
+Notes
 
 This is a lab built on evaluation licenses and is not a production design. The PowerShell script was developed with AI assistance (Claude).
 
-*Made by Nicholas Convento*
+Made by Nicholas Convento
