@@ -133,30 +133,47 @@ Entered wrong passwords for `CORP\jsmith` from CLIENT01 until the lockout policy
 
 ### Screenshots
 
+**Dashboard**
+
 ![AD Authentication Monitoring dashboard](screenshots/04-splunk/splunk-dashboard.png)
+![AD Authentication Monitoring dashboard, continued](screenshots/04-splunk/splunk-dashboard-2.png)
+
+**Failed logon (4771) and lockout (4740) events in Splunk**
+
+![Failed logon and lockout events in Splunk](screenshots/04-splunk/splunk-4740-event.png)
+
+**Account changes (create, enable, password reset, disable, delete)**
+
+![Account change events in Splunk](screenshots/04-splunk/splunk-account-changes.png)
+
+**Triggered alerts**
+
 ![Triggered alerts](screenshots/04-splunk/splunk-triggered-alerts.png)
-![Account lockout (4740) event in Splunk](screenshots/04-splunk/splunk-4740-event.png)
+
+**Audit policy: User Account Management set to Success and Failure in Group Policy**
+
+![Audit User Account Management in Group Policy](screenshots/04-splunk/splunk-audit-gpo.png)
 
 ### Issues and fixes
 
 | Problem | Cause | Fix |
 | --- | --- | --- |
 | Searches for "last 15 minutes" returned nothing | DC01's clock was hours off the host, so events were timestamped in the future | Synced DC01's time with `w32tm` and confirmed UTC time matched on both machines |
-| Account locked but no lockout (4740) event in Splunk | `auditpol` showed User Account Management set to No Auditing, so DC01 did not record the event | Enabled Success and Failure auditing for that subcategory |
+| Account locked but no lockout (4740) event in Splunk | `auditpol` showed User Account Management set to No Auditing, so DC01 did not record the event | Enabled Success and Failure auditing for that subcategory with `auditpol`, then set it in Group Policy so it persists |
 | First forwarded events never appeared | Forwarder started sending before the `ad_lab` index existed, so Splunk dropped them | Created the index first, then generated fresh events |
 | No data after DC01 froze and was reset | Needed to confirm the forwarder and connection came back | Checked `Get-Service SplunkForwarder`, `Test-NetConnection 10.0.2.2 -Port 9997`, and the latest event time in Splunk |
 
-### Detection mapping
+### Detections
 
-| Detection | Event 
-| --- | --- | --- | --- |
+| Detection | Event |
+| --- | --- |
 | Repeated failed logons | 4771 |
-| Account lockout | 4740 | 
-| Account changes | 4720, 4722, 4724, 4725, 4726 | 
-
+| Account lockout | 4740 |
+| Account changes | 4720, 4722, 4724, 4725, 4726 |
 
 ## Takeaways
 
+- Account lockout policy only takes effect at the domain level, and GPO link order decides which policy wins.
 - Lockouts are enforced by the domain controller, so failed attempts that never reach it do not count.
 - A domain controller only records what it is told to audit, so detection depends on turning on failure auditing first.
 - A brute-force attempt looks like repeated 4771 events for one account from one source, ending in a 4740 lockout.
