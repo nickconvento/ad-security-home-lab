@@ -1,8 +1,8 @@
 # Active Directory Security Home Lab
 
-A small Windows domain built in VirtualBox to practice Active Directory administration and security monitoring: a domain-joined Windows 11 client, an account lockout policy enforced through Group Policy, a PowerShell script that reports failed logons and lockouts from the domain controller's Security log, and a Splunk SIEM with a dashboard and alerts built on those same events.
+A small Windows domain built in VirtualBox to practice Active Directory administration and security monitoring: a domain-joined Windows 11 client, an account lockout policy enforced through Group Policy, and a PowerShell script that reports failed logons and lockouts from the domain controller's Security log.
 
-**Skills practiced:** Active Directory and DNS, Group Policy, network troubleshooting, Windows event auditing, PowerShell, Splunk (log forwarding, SPL searches, dashboards, alerting).
+**Skills practiced:** Active Directory and DNS, Group Policy, network troubleshooting, Windows event auditing, PowerShell.
 
 
 ## Lab environment
@@ -16,7 +16,6 @@ A small Windows domain built in VirtualBox to practice Active Directory administ
 | DC01 address | 192.168.10.10 (static); also has a NAT adapter (10.0.2.15) for internet |
 | CLIENT01 address | 192.168.10.20 (static), DNS pointed at DC01 |
 | Test accounts | `jsmith` and `mjones` (standard domain users) |
-| SIEM | Splunk Enterprise on the host laptop; Splunk Universal Forwarder on DC01 sending to the host at 10.0.2.2:9997 (index `ad_lab`) |
 
 The domain has OUs for IT, Sales, and Workstations.
 
@@ -26,7 +25,6 @@ The domain has OUs for IT, Sales, and Workstations.
 2. **Account lockout policy.** A GPO linked at the domain level: 5 invalid attempts, 15-minute lockout, 15-minute reset.
 3. **Lockout test.** Entered wrong passwords for `CORP\jsmith` from CLIENT01 and confirmed on DC01 (`BadLogonCount 5`, `LockedOut True`).
 4. **Failed-logon reporting.** Enabled failure auditing on the domain controller and wrote a PowerShell script that lists failed logons and lockouts.
-5. **SIEM monitoring with Splunk.** Forwarded DC01's Security log to Splunk, built an authentication monitoring dashboard, and created alerts for repeated failed logons and account lockouts, then validated them with simulated failed logins from CLIENT01.
 
 ## Screenshots
 
@@ -63,13 +61,6 @@ CLIENT01 reported that the domain wasn't available. `nslookup corp.local` return
 
 ![Script output](screenshots/script-output.png)
 
-### Splunk monitoring
-
-<!-- Replace these paths with wherever you upload the Splunk screenshots -->
-![AD Authentication Monitoring dashboard](screenshots/04-splunk/splunk-dashboard.png)
-![Triggered alerts](screenshots/04-splunk/splunk-triggered-alerts.png)
-![Account lockout (4740) event in Splunk](screenshots/04-splunk/splunk-4740-event.png)
-
 ## Problems I solved
 
 | Problem | Cause | Fix |
@@ -81,9 +72,6 @@ CLIENT01 reported that the domain wasn't available. `nslookup corp.local` return
 | Domain "isn't available" at sign-in | DC01's NAT adapter registered extra addresses in DNS | Stopped DNS registration on that adapter and cleaned up the records |
 | Failed logons missing from the log | Failure auditing not enabled on the DC | Enabled Success and Failure for Credential Validation and Kerberos Authentication Service |
 | User column showed the authentication package | First version of the script read the first event field instead of the named one | Parse event data by field name |
-| Splunk searches for "last 15 minutes" returned nothing | DC01's clock was hours off the host, so events were timestamped in the future | Synced DC01's time with `w32tm` and confirmed UTC time matched on both machines |
-| Account locked but no lockout (4740) event in Splunk | `auditpol` showed User Account Management set to No Auditing, so DC01 did not record the event | Enabled Success and Failure auditing for that subcategory |
-| First forwarded events never appeared | Forwarder started sending before the `ad_lab` index existed, so Splunk dropped them | Created the index first, then generated fresh events |
 
 ## The script
 
@@ -104,11 +92,20 @@ CLIENT01 reported that the domain wasn't available. `nslookup corp.local` return
 | 4776 | Domain controller | NTLM credential validation |
 | 4740 | Domain controller | Account locked out |
 
-## Splunk monitoring
+## Splunk SIEM Monitoring
 
-The script reads the log on demand. Splunk collects the same events continuously so they can be searched, charted, and alerted on.
+Forwarded the domain controller's Security log to Splunk Enterprise so authentication events can be searched, charted, and alerted on.
 
-**Data flow:** DC01 (Splunk Universal Forwarder, Security log) sends to Splunk Enterprise on the host laptop (port 9997), into the `ad_lab` index. The forwarder input on DC01:
+### Setup
+
+| Component | Details |
+| --- | --- |
+| Splunk Enterprise | Installed on the host laptop; receives data on port 9997, search UI on 8000 |
+| Splunk Universal Forwarder | Installed on DC01, sends the Security event log |
+| Index | `ad_lab` |
+| Connection | DC01's NAT adapter to the host at `10.0.2.2:9997` |
+
+Forwarder input on DC01 (`inputs.conf`):
 
 ```
 [WinEventLog://Security]
@@ -116,21 +113,40 @@ index = ad_lab
 disabled = 0
 ```
 
-**Dashboard: AD Authentication Monitoring**
+### Dashboard: AD Authentication Monitoring
+
 - Repeated failed logons by source
 - Account lockouts (locked user and caller computer)
 - Failed logons over time
 - Account changes (create, enable, password reset, disable, delete)
 
-**Alerts**
-- **Repeated Failed Logons:** fires when one source produces 5 or more Kerberos pre-authentication failures (Event 4771) in 15 minutes. Runs every 5 minutes.
+### Alerts
+
+- **Repeated Failed Logons:** fires when one source produces 5 or more Kerberos pre-authentication failures (Event 4771) within 15 minutes. Runs every 5 minutes.
 - **Account Lockout:** fires on any Event 4740.
 
-All searches and alert settings are in [`splunk/detections.md`](splunk/detections.md).
+Searches and alert settings are in [`splunk/detections.md`](splunk/detections.md).
 
-**Testing:** failed logins for `CORP\jsmith` from CLIENT01 until the lockout policy locked the account, confirming the 4771 failures and 4740 lockout reached Splunk and the dashboard. A test account was created, reset, disabled, and deleted to populate the account changes panel.
+### Testing
 
-**Detection mapping**
+Entered wrong passwords for `CORP\jsmith` from CLIENT01 until the lockout policy locked the account, then confirmed the 4771 failures and the 4740 lockout appeared in Splunk and on the dashboard. Created, reset, disabled, and deleted a test account to populate the account changes panel.
+
+### Screenshots
+
+![AD Authentication Monitoring dashboard](screenshots/04-splunk/splunk-dashboard.png)
+![Triggered alerts](screenshots/04-splunk/splunk-triggered-alerts.png)
+![Account lockout (4740) event in Splunk](screenshots/04-splunk/splunk-4740-event.png)
+
+### Issues and fixes
+
+| Problem | Cause | Fix |
+| --- | --- | --- |
+| Searches for "last 15 minutes" returned nothing | DC01's clock was hours off the host, so events were timestamped in the future | Synced DC01's time with `w32tm` and confirmed UTC time matched on both machines |
+| Account locked but no lockout (4740) event in Splunk | `auditpol` showed User Account Management set to No Auditing, so DC01 did not record the event | Enabled Success and Failure auditing for that subcategory |
+| First forwarded events never appeared | Forwarder started sending before the `ad_lab` index existed, so Splunk dropped them | Created the index first, then generated fresh events |
+| No data after DC01 froze and was reset | Needed to confirm the forwarder and connection came back | Checked `Get-Service SplunkForwarder`, `Test-NetConnection 10.0.2.2 -Port 9997`, and the latest event time in Splunk |
+
+### Detection mapping
 
 | Detection | Event | MITRE ATT&CK | NIST 800-53 |
 | --- | --- | --- | --- |
@@ -144,11 +160,10 @@ All searches and alert settings are in [`splunk/detections.md`](splunk/detection
 - Lockouts are enforced by the domain controller, so failed attempts that never reach it do not count.
 - A domain controller only records what it is told to audit, so detection depends on turning on failure auditing first.
 - A brute-force attempt looks like repeated 4771 events for one account from one source, ending in a 4740 lockout.
-- A SIEM is only as good as its inputs: mismatched clocks and a disabled audit subcategory both hid events that were really happening.
 
 ## Next steps
 
-Move the User Account Management audit setting into Group Policy so it persists after a reset, and add an alert for account changes.
+Schedule the script to run daily and flag any account with several failures in a short window.
 
 ## Notes
 
