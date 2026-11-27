@@ -148,15 +148,15 @@ Entered wrong passwords for `CORP\jsmith` from CLIENT01 until the lockout policy
 
 ### Detection mapping
 
-| Detection | Event | MITRE ATT&CK | NIST 800-53 |
+| Detection | Event 
 | --- | --- | --- | --- |
-| Repeated failed logons | 4771 | T1110 Brute Force | AC-7 Unsuccessful Logon Attempts |
-| Account lockout | 4740 | T1110 Brute Force | AC-7 Unsuccessful Logon Attempts |
-| Account changes | 4720, 4722, 4724, 4725, 4726 | T1136 Create Account, T1098 Account Manipulation | AC-2 Account Management |
+| Repeated failed logons | 4771 |
+| Account lockout | 4740 | 
+| Account changes | 4720, 4722, 4724, 4725, 4726 | 
+
 
 ## Takeaways
 
-- Account lockout policy only takes effect at the domain level, and GPO link order decides which policy wins.
 - Lockouts are enforced by the domain controller, so failed attempts that never reach it do not count.
 - A domain controller only records what it is told to audit, so detection depends on turning on failure auditing first.
 - A brute-force attempt looks like repeated 4771 events for one account from one source, ending in a 4740 lockout.
