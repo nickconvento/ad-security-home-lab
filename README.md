@@ -125,7 +125,7 @@ disabled = 0
 - **Repeated Failed Logons:** fires when one source produces 5 or more Kerberos pre-authentication failures (Event 4771) within 15 minutes. Runs every 5 minutes.
 - **Account Lockout:** fires on any Event 4740.
 
-Searches and alert settings are in [`splunk/detections.md`](splunk/detections.md).
+Searches and alert settings are in [`detections.md`](detections.md).
 
 ### Testing
 
@@ -135,24 +135,24 @@ Entered wrong passwords for `CORP\jsmith` from CLIENT01 until the lockout policy
 
 **Dashboard**
 
-![AD Authentication Monitoring dashboard](screenshots/04-splunk/splunk-dashboard.png)
-![AD Authentication Monitoring dashboard, continued](screenshots/04-splunk/splunk-dashboard-2.png)
+![AD Authentication Monitoring dashboard](screenshots/splunk-dashboard.png)
+![AD Authentication Monitoring dashboard, continued](screenshots/splunk-dashboard-2.png)
 
 **Failed logon (4771) and lockout (4740) events in Splunk**
 
-![Failed logon and lockout events in Splunk](screenshots/04-splunk/splunk-4740-event.png)
+![Failed logon and lockout events in Splunk](screenshots/splunk-4740-event.png)
 
 **Account changes (create, enable, password reset, disable, delete)**
 
-![Account change events in Splunk](screenshots/04-splunk/splunk-account-changes.png)
+![Account change events in Splunk](screenshots/splunk-account-changes.png)
 
 **Triggered alerts**
 
-![Triggered alerts](screenshots/04-splunk/splunk-triggered-alerts.png)
+![Triggered alerts](screenshots/splunk-triggered-alerts.png)
 
 **Audit policy: User Account Management set to Success and Failure in Group Policy**
 
-![Audit User Account Management in Group Policy](screenshots/04-splunk/splunk-audit-gpo.png)
+![Audit User Account Management in Group Policy](screenshots/splunk-audit-gpo.png)
 
 ### Issues and fixes
 
